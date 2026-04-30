@@ -10,7 +10,7 @@ An **unofficial WhatsApp Web** assistant built with **[whatsapp-web.js](https://
 |------|----------------|
 | **WhatsApp linking** | Log in via **QR code** (same as WhatsApp Desktop / Linked Devices). Session is stored under `.wwebjs_auth`. |
 | **Customers** | Add manually; **CSV import** (bulk); auto-create contact on first **inbound** message; tags, assigned agent, opt-in/opt-out, notes; **search** (name, phone, tags, agent, chat id); **pagination** on the list page. |
-| **Templates** | Message bodies with placeholders `{{name}}` and `{{phone}}` for campaigns. Starter templates are seeded on first DB init (see [Default templates](#default-templates)). |
+| **Templates** | Message bodies with placeholders `{{name}}` and `{{phone}}` for campaigns. Starter templates are seeded on first DB init (see [Default templates](#default-templates)); more [copy-paste examples](#example-message-templates-copy-paste) below. |
 | **Campaigns** | Send bulk messages from a chosen template; optional **tag filter**; **immediate** send or **scheduled** time (SQLite `datetime('now')` — use **UTC-compatible** timestamps for reliability). |
 | **Messages** | Inbound/outbound history linked to customers. |
 | **Support bot** | Toggle auto-replies; editable fallback text; FAQ keyword rules stored in SQLite. |
@@ -104,6 +104,60 @@ On **Customers**:
 1. Ensure WhatsApp Web client is **ready** (otherwise sends fail).
 2. Create or edit **templates** (`{{name}}`, `{{phone}}`).
 3. **Campaigns**: pick template; optional tag filter; send now or schedule.
+
+---
+
+## Example message templates (copy-paste)
+
+Use these in **Dashboard → Templates** (create new, paste body, set a short **name** per row). Replace bracketed bits like `[product/service]` or `[invoice/renewal]` with your wording.
+
+### 1. Warm welcome
+
+```
+Hi {{name}}, thanks for connecting with us. How can we help you today?
+```
+
+### 2. Offer teaser
+
+```
+Hi {{name}}! We have something special lined up — reply INTERESTED if you'd like details.
+```
+
+### 3. Follow-up after chat
+
+```
+Hi {{name}}, following up from earlier. Anything else we can clarify before you decide?
+```
+
+### 4. Order / enquiry status
+
+```
+Hi {{name}}, we've noted your enquiry (ref: {{phone}}). Our team will update you shortly — thanks for your patience.
+```
+
+### 5. Appointment / callback
+
+```
+Hi {{name}}, we can call you back at your convenience. Reply with a preferred time slot (today/tomorrow + hours).
+```
+
+### 6. Feedback
+
+```
+Hi {{name}}, quick ask — rate us 1–5 or reply in one line what we could improve. It really helps.
+```
+
+### 7. Reconnect (cold)
+
+```
+Hey {{name}}, it's been a while. If you still need [product/service], reply YES and we'll send a short recap.
+```
+
+### 8. Payment / renewal (neutral)
+
+```
+Hi {{name}}, this is a friendly reminder about [invoice/renewal]. Reply HELP if you need assistance or options.
+```
 
 ---
 
