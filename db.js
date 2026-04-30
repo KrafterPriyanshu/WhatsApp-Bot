@@ -45,6 +45,60 @@ db.serialize(() => {
     )
   `);
 
+  const defaultTemplates = [
+    [
+      "Welcome — New Lead",
+      `Hi {{name}}, thanks for your interest!
+
+We're glad you reached out. If you want details or pricing, reply with what you need and our team will help you shortly.
+
+— Team`,
+    ],
+    [
+      "Promotion — Flash Offer",
+      `Hi {{name}}, quick heads-up!
+
+We’re running a limited-time offer we think you’ll like. Reply YES if you’d like the details sent here, or call/message us anytime on your registered number ({{phone}}).
+
+— Team`,
+    ],
+    [
+      "Follow-up — After Inquiry",
+      `Hello {{name}},
+
+Following up on your recent message — did you get everything you needed? Reply with any questions and we’ll get back quickly.
+
+Best regards`,
+    ],
+    [
+      "Appointment — Reminder",
+      `Hi {{name}}, this is a friendly reminder about your upcoming appointment/time with us.
+
+If you need to reschedule, reply RESCHEDULE and we’ll arrange a better slot.
+
+See you soon!`,
+    ],
+    [
+      "Feedback — Quick Survey",
+      `Hi {{name}},
+
+Your opinion matters — how would you rate your experience with us? Reply with 1–5 (5 = best), or leave a short note.
+
+Thank you for your time.`,
+    ],
+    [
+      "Reconnect — Win-back",
+      `Hey {{name}}, it’s been a while!
+
+We’d love to have you back. Reply if you’d like updates, an offer recap, or to speak with someone — happy to help.
+
+— Team`,
+    ],
+  ];
+  defaultTemplates.forEach(([name, content]) => {
+    db.run("INSERT OR IGNORE INTO templates (name, content) VALUES (?, ?)", [name, content]);
+  });
+
   db.run(`
     CREATE TABLE IF NOT EXISTS campaigns (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
