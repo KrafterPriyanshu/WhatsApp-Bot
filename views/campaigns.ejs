@@ -1,0 +1,73 @@
+<%- include("partials/app-start", {
+  pageTitle: "Campaigns",
+  pageHeading: "Campaigns",
+  pageSubtitle: "Run and monitor bulk WhatsApp campaigns.",
+  activePage,
+  counts
+}) %>
+
+<section class="card">
+  <h2>Send Bulk Campaign</h2>
+  <form method="post" action="/send-bulk" class="grid">
+    <select name="templateId" required>
+      <option value="">Select template</option>
+      <% templates.forEach((template) => { %>
+      <option value="<%= template.id %>"><%= template.name %></option>
+      <% }) %>
+    </select>
+    <input type="text" name="tagFilter" placeholder="Optional tag filter" />
+    <input type="datetime-local" name="scheduleAt" />
+    <button type="submit">Send Bulk</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Campaign History (<%= campaigns.length %>)</h2>
+  <div class="actions">
+    <form
+      method="post"
+      action="/campaigns/delete-all"
+      onsubmit="return confirm('Delete ALL campaign records?')"
+    >
+      <button type="submit" class="danger">Delete All Campaigns</button>
+    </form>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Template</th>
+          <th>Recipients</th>
+          <th>Tag Filter</th>
+          <th>Schedule</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% campaigns.forEach((campaign) => { %>
+        <tr>
+          <td>#<%= campaign.id %></td>
+          <td><%= campaign.template_name %></td>
+          <td><%= campaign.customer_count %></td>
+          <td><%= campaign.tag_filter || "-" %></td>
+          <td><%= campaign.scheduled_at || "-" %></td>
+          <td><span class="pill"><%= campaign.status %></span></td>
+          <td>
+            <form
+              method="post"
+              action="/campaigns/<%= campaign.id %>/delete"
+              onsubmit="return confirm('Delete this campaign record?')"
+            >
+              <button type="submit" class="danger">Delete</button>
+            </form>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<%- include("partials/app-end") %>

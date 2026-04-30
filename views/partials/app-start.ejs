@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= pageTitle %></title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+    <div class="app-shell">
+      <aside class="sidebar" id="sidebar">
+        <button type="button" class="sidebar-close" id="sidebar-close" aria-label="Close menu">
+          x
+        </button>
+        <div class="brand">
+          <div class="brand-icon">W</div>
+          <div>
+            <h2>WA Control</h2>
+            <p>Support + Marketing</p>
+          </div>
+        </div>
+        <nav class="nav-links">
+          <a class="<%= activePage === 'dashboard' ? 'active' : '' %>" href="/dashboard">Dashboard</a>
+          <a class="<%= activePage === 'customers' ? 'active' : '' %>" href="/customers">Customers</a>
+          <a class="<%= activePage === 'templates' ? 'active' : '' %>" href="/templates">Templates</a>
+          <a class="<%= activePage === 'campaigns' ? 'active' : '' %>" href="/campaigns">Campaigns</a>
+          <a class="<%= activePage === 'messages' ? 'active' : '' %>" href="/messages">Messages</a>
+          <a class="<%= activePage === 'chatbot' ? 'active' : '' %>" href="/chatbot">Chatbot + FAQs</a>
+          <a class="<%= activePage === 'automation' ? 'active' : '' %>" href="/automation">Automation</a>
+          <a class="<%= activePage === 'analytics' ? 'active' : '' %>" href="/analytics">Analytics</a>
+        </nav>
+      </aside>
+      <main class="container">
+        <header class="topbar">
+          <div class="topbar-left">
+            <button type="button" class="menu-toggle" id="menu-toggle" aria-label="Open menu">
+              Menu
+            </button>
+            <div class="title-wrap">
+            <h1><%= pageHeading %></h1>
+            <p class="subtitle"><%= pageSubtitle %></p>
+            </div>
+          </div>
+          <div class="topbar-actions">
+            <% if (currentUser) { %>
+            <span class="user-chip">Signed in: <%= currentUser.username %></span>
+            <% } %>
+            <a class="button ghost" href="/health" target="_blank" rel="noreferrer">API Elisium</a>
+            <form method="post" action="/logout">
+              <button type="submit" class="danger">Logout</button>
+            </form>
+          </div>
+        </header>
+        <section class="stats-grid">
+          <article class="stat-card">
+            <h3>Customers</h3>
+            <p><%= counts.customers %></p>
+          </article>
+          <article class="stat-card">
+            <h3>Templates</h3>
+            <p><%= counts.templates %></p>
+          </article>
+          <article class="stat-card">
+            <h3>Campaigns</h3>
+            <p><%= counts.campaigns %></p>
+          </article>
+          <article class="stat-card">
+            <h3>Messages</h3>
+            <p><%= counts.messages %></p>
+          </article>
+          <article class="stat-card">
+            <h3>Opted Out</h3>
+            <p><%= counts.optedOut %></p>
+          </article>
+        </section>

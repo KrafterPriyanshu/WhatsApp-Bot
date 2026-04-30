@@ -1,0 +1,121 @@
+<%- include("partials/app-start", {
+  pageTitle: "Chatbot",
+  pageHeading: "Chatbot + FAQs",
+  pageSubtitle: "Configure support bot behavior and FAQ auto-replies.",
+  activePage,
+  counts
+}) %>
+
+<section class="card">
+  <div class="section-head">
+    <h2>WhatsApp Web Status</h2>
+  </div>
+  <p class="muted">
+    Connection:
+    <strong class="<%= waState.isReady ? 'ok' : 'warn' %>"
+      ><%= waState.isReady ? "Connected" : "Not Connected" %></strong
+    >
+  </p>
+  <p class="muted">If not connected, check terminal and scan the QR code from Linked Devices.</p>
+  <% if (!waState.isReady && waState.qrDataUrl) { %>
+  <div class="qr-wrap">
+    <img src="<%= waState.qrDataUrl %>" alt="WhatsApp QR code" class="qr-image" />
+  </div>
+  <% } %>
+  <div class="actions">
+    <form
+      method="post"
+      action="/whatsapp/logout"
+      onsubmit="return confirm('Logout from WhatsApp Web on this bot? You will need to scan QR again.')"
+    >
+      <button type="submit" class="danger">Logout WhatsApp</button>
+    </form>
+  </div>
+  <% if (waState.lastError) { %>
+  <p class="error-text"><strong>Last error:</strong> <%= waState.lastError %></p>
+  <% } %>
+</section>
+
+<section class="card">
+  <h2>Customer Support Chatbot</h2>
+  <form method="post" action="/support-bot/update" class="grid">
+    <label class="check-row">
+      <input type="checkbox" name="enabled" <%= supportBot.enabled ? "checked" : "" %> />
+      Enable auto chatbot replies
+    </label>
+    <textarea
+      name="fallbackReply"
+      rows="3"
+      placeholder="Default support reply if no keyword matches"
+      required
+    ><%= supportBot.fallback_reply %></textarea>
+    <p class="muted">Keywords handled: hi/hello, pricing, order status, human agent, thanks.</p>
+    <button type="submit">Save Chatbot Settings</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>FAQs for Auto Replies (<%= faqRules.length %>)</h2>
+  <form method="post" action="/faq" class="grid">
+    <input
+      type="text"
+      name="questionKeywords"
+      placeholder="Keywords (comma separated), e.g. refund, return, cancel"
+      required
+    />
+    <textarea name="answer" rows="3" placeholder="Reply message for this FAQ" required></textarea>
+    <label class="check-row">
+      <input type="checkbox" name="isActive" checked />
+      Active
+    </label>
+    <button type="submit">Add FAQ</button>
+  </form>
+
+  <div class="actions">
+    <form method="post" action="/faq/delete-all" onsubmit="return confirm('Delete all FAQ rules?')">
+      <button type="submit" class="danger">Delete All FAQs</button>
+    </form>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Keywords</th>
+          <th>Answer</th>
+          <th>Active</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% faqRules.forEach((faq) => { %>
+        <tr>
+          <td>
+            <form method="post" action="/faq/<%= faq.id %>/update" class="inline-edit">
+              <input type="text" name="questionKeywords" value="<%= faq.question_keywords %>" required />
+          </td>
+          <td><textarea name="answer" rows="2" required><%= faq.answer %></textarea></td>
+          <td>
+              <label class="check-row">
+                <input type="checkbox" name="isActive" <%= faq.is_active ? "checked" : "" %> />
+              </label>
+          </td>
+          <td class="actions-cell">
+              <button type="submit" class="secondary">Update</button>
+            </form>
+            <form
+              method="post"
+              action="/faq/<%= faq.id %>/delete"
+              onsubmit="return confirm('Delete this FAQ?')"
+            >
+              <button type="submit" class="danger">Delete</button>
+            </form>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<%- include("partials/app-end") %>

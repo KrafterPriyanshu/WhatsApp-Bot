@@ -1,0 +1,58 @@
+<%- include("partials/app-start", {
+  pageTitle: "Messages",
+  pageHeading: "Messages",
+  pageSubtitle: "View and manage support message history.",
+  activePage,
+  counts
+}) %>
+
+<section class="card">
+  <h2>Message Center (<%= messages.length %>)</h2>
+  <div class="actions">
+    <form
+      method="post"
+      action="/messages/delete-all"
+      onsubmit="return confirm('Delete ALL messages?')"
+    >
+      <button type="submit" class="danger">Delete All Messages</button>
+    </form>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Direction</th>
+          <th>Customer</th>
+          <th>Message</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% messages.forEach((m) => { %>
+        <tr>
+          <td>
+            <span class="pill <%= m.direction === 'inbound' ? 'pill-inbound' : 'pill-outbound' %>"
+              ><%= m.direction %></span
+            >
+          </td>
+          <td><%= m.customer_name || "Unknown" %> (<%= m.phone || "N/A" %>)</td>
+          <td class="message-col"><%= m.body %></td>
+          <td><span class="pill"><%= m.status %></span></td>
+          <td>
+            <form
+              method="post"
+              action="/messages/<%= m.id %>/delete"
+              onsubmit="return confirm('Delete this message?')"
+            >
+              <button type="submit" class="danger">Delete</button>
+            </form>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<%- include("partials/app-end") %>

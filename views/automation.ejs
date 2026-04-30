@@ -1,0 +1,64 @@
+<%- include("partials/app-start", {
+  pageTitle: "Automation",
+  pageHeading: "Automation Rules",
+  pageSubtitle: "Configure trigger-based auto replies and flows.",
+  activePage,
+  counts
+}) %>
+
+<section class="card">
+  <h2>Create Rule</h2>
+  <form method="post" action="/automation" class="grid">
+    <input type="text" name="name" placeholder="Rule name" required />
+    <input type="text" name="triggerKeyword" placeholder="Trigger keyword (e.g. refund)" required />
+    <textarea name="replyTemplate" rows="3" placeholder="Reply message template" required></textarea>
+    <label class="check-row">
+      <input type="checkbox" name="isActive" checked />
+      Active
+    </label>
+    <button type="submit">Add Rule</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Active Rules (<%= automationRules.length %>)</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Trigger</th>
+          <th>Reply</th>
+          <th>Active</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% automationRules.forEach((rule) => { %>
+        <tr>
+          <td>
+            <form method="post" action="/automation/<%= rule.id %>/update" class="inline-edit">
+              <input type="text" name="name" value="<%= rule.name %>" required />
+          </td>
+          <td><input type="text" name="triggerKeyword" value="<%= rule.trigger_keyword %>" required /></td>
+          <td><textarea name="replyTemplate" rows="2" required><%= rule.reply_template %></textarea></td>
+          <td>
+              <label class="check-row">
+                <input type="checkbox" name="isActive" <%= rule.is_active ? "checked" : "" %> />
+              </label>
+          </td>
+          <td class="actions-cell">
+              <button type="submit" class="secondary">Update</button>
+            </form>
+            <form method="post" action="/automation/<%= rule.id %>/delete">
+              <button type="submit" class="danger">Delete</button>
+            </form>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<%- include("partials/app-end") %>

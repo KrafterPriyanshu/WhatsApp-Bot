@@ -1,0 +1,88 @@
+<%- include("partials/app-start", {
+  pageTitle: "Customer Profile",
+  pageHeading: customer.name,
+  pageSubtitle: "Customer profile, ownership, notes, and conversation timeline.",
+  activePage,
+  counts
+}) %>
+
+<section class="two-col">
+  <article class="card">
+    <h2>Customer Details</h2>
+    <form method="post" action="/customers/<%= customer.id %>/update" class="grid">
+      <input type="text" name="name" value="<%= customer.name %>" required />
+      <input type="text" name="phone" value="<%= customer.phone %>" required />
+      <input type="text" name="tags" value="<%= customer.tags %>" />
+      <button type="submit">Save Changes</button>
+    </form>
+    <form method="post" action="/customers/<%= customer.id %>/assign" class="grid mt-10">
+      <input
+        type="text"
+        name="assignedAgent"
+        value="<%= customer.assigned_agent || '' %>"
+        placeholder="Assign agent"
+      />
+      <button type="submit" class="secondary">Update Owner</button>
+    </form>
+  </article>
+
+  <article class="card">
+    <h2>Internal Notes</h2>
+    <form method="post" action="/customers/<%= customer.id %>/notes" class="grid">
+      <textarea name="note" rows="3" placeholder="Add a note..." required></textarea>
+      <button type="submit">Add Note</button>
+    </form>
+    <div class="table-wrap mt-10">
+      <table>
+        <thead>
+          <tr>
+            <th>Note</th>
+            <th>Created</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% notes.forEach((note) => { %>
+          <tr>
+            <td><%= note.note %></td>
+            <td><%= note.created_at %></td>
+            <td>
+              <form method="post" action="/notes/<%= note.id %>/delete">
+                <button type="submit" class="danger">Delete</button>
+              </form>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </article>
+</section>
+
+<section class="card">
+  <h2>Recent Conversation (<%= messages.length %>)</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Direction</th>
+          <th>Message</th>
+          <th>Status</th>
+          <th>Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% messages.forEach((m) => { %>
+        <tr>
+          <td><span class="pill <%= m.direction === 'inbound' ? 'pill-inbound' : 'pill-outbound' %>"><%= m.direction %></span></td>
+          <td class="message-col"><%= m.body %></td>
+          <td><span class="pill"><%= m.status %></span></td>
+          <td><%= m.created_at %></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<%- include("partials/app-end") %>

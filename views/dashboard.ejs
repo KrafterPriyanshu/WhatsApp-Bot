@@ -1,0 +1,92 @@
+<%- include("partials/app-start", {
+  pageTitle: "Dashboard",
+  pageHeading: "WhatsApp Admin Dashboard",
+  pageSubtitle: "Quick view of connection, latest campaigns, and latest support messages.",
+  activePage,
+  counts
+}) %>
+
+      <section class="card">
+        <div class="section-head">
+          <h2>WhatsApp Web Status</h2>
+        </div>
+        <p class="muted">
+          Connection:
+          <strong class="<%= waState.isReady ? 'ok' : 'warn' %>"
+            ><%= waState.isReady ? "Connected" : "Not Connected" %></strong
+          >
+        </p>
+        <p class="muted">If not connected, check terminal and scan the QR code from Linked Devices.</p>
+        <div class="actions">
+          <form
+            method="post"
+            action="/whatsapp/logout"
+            onsubmit="return confirm('Logout from WhatsApp Web on this bot? You will need to scan QR again.')"
+          >
+            <button type="submit" class="danger">Logout WhatsApp</button>
+          </form>
+        </div>
+        <% if (waState.lastError) { %>
+        <p class="error-text"><strong>Last error:</strong> <%= waState.lastError %></p>
+        <% } %>
+      </section>
+
+      <section class="card">
+        <h2>Latest Campaigns</h2>
+        <div class="actions">
+          <a class="button ghost" href="/campaigns">Manage Campaigns</a>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Template</th>
+                <th>Recipients</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+          <% campaigns.forEach((campaign) => { %>
+              <tr>
+                <td>#<%= campaign.id %></td>
+                <td><%= campaign.template_name %></td>
+                <td><%= campaign.customer_count %></td>
+                <td><span class="pill"><%= campaign.status %></span></td>
+              </tr>
+          <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Recent Messages (<%= messages.length %>)</h2>
+        <div class="actions">
+          <a class="button ghost" href="/messages">Open Message Center</a>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Direction</th>
+                <th>Customer</th>
+                <th>Message</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+          <% messages.forEach((m) => { %>
+              <tr>
+                <td><span class="pill <%= m.direction === 'inbound' ? 'pill-inbound' : 'pill-outbound' %>"><%= m.direction %></span></td>
+                <td><%= m.customer_name || "Unknown" %> (<%= m.phone || "N/A" %>)</td>
+                <td class="message-col"><%= m.body %></td>
+                <td><span class="pill"><%= m.status %></span></td>
+              </tr>
+          <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+<%- include("partials/app-end") %>

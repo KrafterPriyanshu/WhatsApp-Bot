@@ -1,0 +1,66 @@
+<%- include("partials/app-start", {
+  pageTitle: "Templates",
+  pageHeading: "Templates",
+  pageSubtitle: "Create and edit reusable message templates.",
+  activePage,
+  counts
+}) %>
+
+<section class="two-col">
+  <article class="card">
+    <h2>Create Template</h2>
+    <form method="post" action="/templates" class="grid">
+      <input type="text" name="name" placeholder="Template name" required />
+      <textarea name="content" rows="4" placeholder="Hello {{name}}, your offer is ready." required></textarea>
+      <button type="submit">Save Template</button>
+    </form>
+  </article>
+</section>
+
+<section class="card">
+  <h2>All Templates (<%= templates.length %>)</h2>
+  <div class="actions">
+    <form
+      method="post"
+      action="/templates/delete-all"
+      onsubmit="return confirm('Delete ALL templates?')"
+    >
+      <button type="submit" class="danger">Delete All Templates</button>
+    </form>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Message Content</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% templates.forEach((t) => { %>
+        <tr>
+          <td>
+            <form method="post" action="/templates/<%= t.id %>/update" class="inline-edit">
+              <input type="text" name="name" value="<%= t.name %>" required />
+          </td>
+          <td><textarea name="content" rows="2" required><%= t.content %></textarea></td>
+          <td class="actions-cell">
+              <button type="submit" class="secondary">Update</button>
+            </form>
+            <form
+              method="post"
+              action="/templates/<%= t.id %>/delete"
+              onsubmit="return confirm('Delete this template?')"
+            >
+              <button type="submit" class="danger">Delete</button>
+            </form>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<%- include("partials/app-end") %>

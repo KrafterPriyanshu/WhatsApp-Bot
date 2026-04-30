@@ -1,0 +1,84 @@
+<%- include("partials/app-start", {
+  pageTitle: "Customers",
+  pageHeading: "Customers",
+  pageSubtitle: "Add, edit, and manage your customer list.",
+  activePage,
+  counts
+}) %>
+
+<section class="two-col">
+  <article class="card">
+    <h2>Add Customer</h2>
+    <form method="post" action="/customers" class="grid">
+      <input type="text" name="name" placeholder="Customer name" required />
+      <input type="text" name="phone" placeholder="Phone with country code" required />
+      <input type="text" name="tags" placeholder="Tags (e.g. lead,vip)" />
+      <button type="submit">Add Customer</button>
+    </form>
+  </article>
+</section>
+
+<section class="card">
+  <h2>All Customers (<%= customers.length %>)</h2>
+  <div class="actions">
+    <form
+      method="post"
+      action="/customers/delete-all"
+      onsubmit="return confirm('Delete ALL customers and message history?')"
+    >
+      <button type="submit" class="danger">Delete All Customer Data</button>
+    </form>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Phone</th>
+          <th>Tags</th>
+          <th>Owner</th>
+          <th>Consent</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% customers.forEach((c) => { %>
+        <tr>
+          <td><%= c.name %></td>
+          <td><%= c.phone %></td>
+          <td><%= c.tags %></td>
+          <td>
+            <form method="post" action="/customers/<%= c.id %>/assign">
+              <input type="text" name="assignedAgent" value="<%= c.assigned_agent || '' %>" placeholder="Agent name" />
+              <button type="submit" class="secondary">Assign</button>
+            </form>
+          </td>
+          <td>
+            <% if (c.is_opted_out) { %>
+            <form method="post" action="/customers/<%= c.id %>/opt-in">
+              <button type="submit" class="secondary">Opted Out (Enable)</button>
+            </form>
+            <% } else { %>
+            <form method="post" action="/customers/<%= c.id %>/opt-out">
+              <button type="submit" class="danger">Opt Out</button>
+            </form>
+            <% } %>
+          </td>
+          <td class="actions-cell">
+            <a class="button ghost" href="/customers/<%= c.id %>">Profile</a>
+            <form
+              method="post"
+              action="/customers/<%= c.id %>/delete"
+              onsubmit="return confirm('Delete this customer and their messages?')"
+            >
+              <button type="submit" class="danger">Delete</button>
+            </form>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<%- include("partials/app-end") %>

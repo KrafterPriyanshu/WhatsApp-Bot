@@ -1,0 +1,79 @@
+<%- include("partials/app-start", {
+  pageTitle: "Analytics",
+  pageHeading: "Analytics",
+  pageSubtitle: "Track support performance, campaign health, and audience insights.",
+  activePage,
+  counts
+}) %>
+
+<section class="two-col">
+  <article class="card">
+    <h2>Message Trend (Last 7 Days)</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Inbound</th>
+            <th>Outbound</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% messageStats.forEach((row) => { %>
+          <tr>
+            <td><%= row.day %></td>
+            <td><span class="pill pill-inbound"><%= row.inbound %></span></td>
+            <td><span class="pill pill-outbound"><%= row.outbound %></span></td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </article>
+
+  <article class="card">
+    <h2>Campaign Status Breakdown</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Status</th>
+            <th>Count</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% campaignStats.forEach((row) => { %>
+          <tr>
+            <td><span class="pill"><%= row.status %></span></td>
+            <td><%= row.count %></td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </article>
+</section>
+
+<section class="card">
+  <h2>Top Customer Segments by Tags</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Tag</th>
+          <th>Customers</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% topTags.forEach((tag) => { %>
+        <tr>
+          <td><%= tag.tags %></td>
+          <td><%= tag.count %></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<%- include("partials/app-end") %>
