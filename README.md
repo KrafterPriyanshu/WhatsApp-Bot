@@ -211,8 +211,10 @@ public/         # CSS + client JS (Socket.io subscriber)
 ## Scripts
 
 ```json
-"start": "node server.js",
-"dev": "node server.js"
+{
+  "start": "node server.js",
+  "dev": "node server.js"
+}
 ```
 
 ---
