@@ -4,6 +4,8 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const session = require("express-session");
 const bcrypt = require("bcryptjs");
+const multer = require("multer");
+const { parse } = require("csv-parse/sync");
 const { Server } = require("socket.io");
 const QRCode = require("qrcode");
 const qrcodeTerminal = require("qrcode-terminal");
@@ -14,6 +16,10 @@ const app = express();
 const httpServer = http.createServer(app);
 const io = new Server(httpServer);
 const PORT = process.env.PORT || 3000;
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 },
+});
 const DEFAULT_SUPPORT_REPLY =
   process.env.SUPPORT_AUTO_REPLY ||
   "Thanks for contacting support. Our team will get back to you soon.";
@@ -174,12 +180,52 @@ function redirectBack(req, res, fallback = "/dashboard") {
   return res.redirect(referer || fallback);
 }
 
+function escapeSqliteLike(pattern) {
+  return String(pattern).replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+}
+
 function emitRealtime(event, payload = {}) {
   io.emit("app:update", {
     event,
     at: new Date().toISOString(),
     ...payload,
   });
+}
+
+function getCsvValue(row, keys = []) {
+  for (const key of keys) {
+    if (row[key] !== undefined && row[key] !== null) return String(row[key]).trim();
+  }
+  return "";
+}
+
+function parseCsvCustomers(csvBuffer) {
+  const csvText = String(csvBuffer || "");
+  const rows = parse(csvText, {
+    columns: true,
+    skip_empty_lines: true,
+    bom: true,
+    relax_column_count: true,
+    trim: true,
+  });
+
+  const prepared = [];
+  const rowErrors = [];
+  rows.forEach((row, index) => {
+    const rowNumber = index + 2;
+    const rawPhone = getCsvValue(row, ["phone", "Phone", "PHONE", "mobile", "Mobile", "MOBILE"]);
+    const phone = rawPhone.replace(/\D/g, "");
+    if (!phone) {
+      rowErrors.push(`Row ${rowNumber}: missing phone`);
+      return;
+    }
+    const name =
+      getCsvValue(row, ["name", "Name", "NAME", "full_name", "fullName"]) || "New Customer";
+    const tags = getCsvValue(row, ["tags", "Tags", "TAGS"]);
+    prepared.push({ name, phone, tags });
+  });
+
+  return { prepared, rowErrors };
 }
 
 function notifyAndRedirect(req, res, event = "data:changed") {
@@ -337,11 +383,72 @@ app.get("/dashboard", async (req, res) => {
 });
 
 app.get("/customers", async (req, res) => {
-  const [counts, customers] = await Promise.all([
-    getCounts(),
-    allQuery("SELECT * FROM customers ORDER BY id DESC"),
-  ]);
-  res.render("customers", { counts, customers, activePage: "customers" });
+  const searchQuery = String(req.query.q ?? "").trim();
+  const likeClause =
+    `(name LIKE ? ESCAPE '\\' OR phone LIKE ? ESCAPE '\\' OR IFNULL(tags,'') LIKE ? ESCAPE '\\' ` +
+    `OR IFNULL(assigned_agent,'') LIKE ? ESCAPE '\\' OR IFNULL(wa_chat_id,'') LIKE ? ESCAPE '\\')`;
+  const likePattern = searchQuery ? `%${escapeSqliteLike(searchQuery)}%` : null;
+
+  const requestedPage = Number.parseInt(String(req.query.page || "1"), 10);
+  const page = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+  const perPage = 200;
+  const counts = await getCounts();
+
+  let totalMatching;
+  if (likePattern) {
+    const row = await getQuery(`SELECT COUNT(*) AS cnt FROM customers WHERE ${likeClause}`, [
+      likePattern,
+      likePattern,
+      likePattern,
+      likePattern,
+      likePattern,
+    ]);
+    totalMatching = Number(row?.cnt ?? 0);
+  } else {
+    totalMatching = counts.customers || 0;
+  }
+
+  const totalPages = Math.max(1, Math.ceil(totalMatching / perPage));
+  const safePage = Math.min(page, totalPages);
+  const offset = (safePage - 1) * perPage;
+
+  let customers;
+  if (likePattern) {
+    customers = await allQuery(
+      `SELECT * FROM customers WHERE ${likeClause} ORDER BY id DESC LIMIT ? OFFSET ?`,
+      [likePattern, likePattern, likePattern, likePattern, likePattern, perPage, offset]
+    );
+  } else {
+    customers = await allQuery("SELECT * FROM customers ORDER BY id DESC LIMIT ? OFFSET ?", [
+      perPage,
+      offset,
+    ]);
+  }
+
+  const importSummary = {
+    added: Number(req.query.added || 0) || 0,
+    skipped: Number(req.query.skipped || 0) || 0,
+    invalid: Number(req.query.invalid || 0) || 0,
+    source: String(req.query.source || ""),
+    error: String(req.query.error || ""),
+  };
+  const pagination = {
+    page: safePage,
+    perPage,
+    totalPages,
+    totalMatching,
+    hasPrev: safePage > 1,
+    hasNext: safePage < totalPages,
+    searchActive: Boolean(likePattern),
+  };
+  res.render("customers", {
+    counts,
+    customers,
+    importSummary,
+    pagination,
+    searchQuery,
+    activePage: "customers",
+  });
 });
 
 app.get("/templates", async (req, res) => {
@@ -446,6 +553,80 @@ app.post("/customers", async (req, res) => {
     redirectBack(req, res);
   } catch (error) {
     res.status(400).send(`Could not add customer: ${error.message}`);
+  }
+});
+
+app.post("/customers/import-csv", (req, res, next) => {
+  upload.single("customersCsv")(req, res, (error) => {
+    if (!error) return next();
+    const source = encodeURIComponent(String(req.body?.source || "upload").trim().slice(0, 80) || "upload");
+    if (error instanceof multer.MulterError && error.code === "LIMIT_FILE_SIZE") {
+      return res.redirect(
+        `/customers?source=${source}&added=0&skipped=0&invalid=0&error=${encodeURIComponent(
+          "CSV file is too large. Max supported size is 50 MB."
+        )}`
+      );
+    }
+    return res.redirect(
+      `/customers?source=${source}&added=0&skipped=0&invalid=0&error=${encodeURIComponent(
+        "Could not read uploaded file."
+      )}`
+    );
+  });
+}, async (req, res) => {
+  const source = encodeURIComponent(String(req.body.source || "upload").trim().slice(0, 80) || "upload");
+  const defaultRedirect = `/customers?source=${source}&added=0&skipped=0&invalid=0`;
+  if (!req.file?.buffer) {
+    return res.redirect(defaultRedirect);
+  }
+
+  try {
+    const { prepared, rowErrors } = parseCsvCustomers(req.file.buffer);
+    if (!prepared.length) {
+      return res.redirect(
+        `/customers?source=${source}&added=0&skipped=0&invalid=${encodeURIComponent(rowErrors.length)}`
+      );
+    }
+
+    const batchSeen = new Set();
+    let added = 0;
+    let skipped = 0;
+
+    await runQuery("BEGIN TRANSACTION");
+    try {
+      for (const customer of prepared) {
+        if (batchSeen.has(customer.phone)) {
+          skipped += 1;
+          continue;
+        }
+        batchSeen.add(customer.phone);
+        const result = await runQuery("INSERT OR IGNORE INTO customers (name, phone, tags) VALUES (?, ?, ?)", [
+          customer.name,
+          customer.phone,
+          customer.tags,
+        ]);
+        if (result.changes > 0) {
+          added += 1;
+        } else {
+          skipped += 1;
+        }
+      }
+      await runQuery("COMMIT");
+    } catch (insertError) {
+      await runQuery("ROLLBACK");
+      throw insertError;
+    }
+
+    const invalid = rowErrors.length;
+    return res.redirect(
+      `/customers?source=${source}&added=${added}&skipped=${skipped}&invalid=${invalid}`
+    );
+  } catch (error) {
+    return res.redirect(
+      `/customers?source=${source}&added=0&skipped=0&invalid=0&error=${encodeURIComponent(
+        `Could not import CSV: ${error.message}`
+      )}`
+    );
   }
 });
 

@@ -195,6 +195,29 @@ p {
   margin-top: 6px;
 }
 
+.customer-search-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.customer-search-input {
+  flex: 1;
+  min-width: 200px;
+  max-width: 420px;
+}
+
+.danger-note {
+  margin-top: 10px;
+  color: #fecaca;
+  background: rgba(185, 28, 28, 0.24);
+  border: 1px solid rgba(248, 113, 113, 0.5);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
 .error-text {
   color: #b91c1c;
   margin-top: 10px;

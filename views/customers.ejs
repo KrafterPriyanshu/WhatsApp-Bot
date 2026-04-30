@@ -16,11 +16,58 @@
       <button type="submit">Add Customer</button>
     </form>
   </article>
+  <article class="card">
+    <h2>Import Customers (CSV)</h2>
+    <form method="post" action="/customers/import-csv" enctype="multipart/form-data" class="grid">
+      <input type="file" name="customersCsv" accept=".csv,text/csv" required />
+      <input type="text" name="source" placeholder="Source label (optional, e.g. april-leads)" />
+      <button type="submit">Upload CSV</button>
+    </form>
+    <p class="muted">
+      Required column: <strong>phone</strong>. Optional: <strong>name</strong>, <strong>tags</strong>.
+      Duplicate phones are skipped automatically.
+    </p>
+    <% if (importSummary?.error) { %>
+    <p class="danger-note"><%= importSummary.error %></p>
+    <% } %>
+    <% if ((importSummary?.added || importSummary?.skipped || importSummary?.invalid) && importSummary?.source) { %>
+    <p>
+      Import result for "<%= importSummary.source %>": added <strong><%= importSummary.added %></strong>,
+      skipped duplicates <strong><%= importSummary.skipped %></strong>, invalid rows
+      <strong><%= importSummary.invalid %></strong>.
+    </p>
+    <% } %>
+  </article>
 </section>
 
 <section class="card">
-  <h2>All Customers (<%= customers.length %>)</h2>
+  <% const qNav = typeof searchQuery === 'string' && searchQuery ? ('&q=' + encodeURIComponent(searchQuery)) : ''; %>
+  <h2><%= pagination.searchActive ? 'Search Results' : 'All Customers' %> (<%= pagination.searchActive ? pagination.totalMatching : counts.customers %>)</h2>
+  <form method="get" action="/customers" class="customer-search-row">
+    <input type="hidden" name="page" value="1" />
+    <input
+      type="search"
+      name="q"
+      value="<%= typeof searchQuery === 'string' ? searchQuery : '' %>"
+      placeholder="Search by name, phone, tags..."
+      autocomplete="off"
+      class="customer-search-input"
+    />
+    <button type="submit">Search</button>
+    <% if (pagination.searchActive) { %>
+    <a class="button ghost" href="/customers">Clear</a>
+    <% } %>
+  </form>
   <div class="actions">
+    <div>
+      <span class="muted">Page <strong><%= pagination.page %></strong> of <strong><%= pagination.totalPages %></strong></span>
+      <% if (pagination.hasPrev) { %>
+      <a class="button ghost" href="/customers?page=<%= pagination.page - 1 %><%= qNav %>">Previous</a>
+      <% } %>
+      <% if (pagination.hasNext) { %>
+      <a class="button ghost" href="/customers?page=<%= pagination.page + 1 %><%= qNav %>">Next</a>
+      <% } %>
+    </div>
     <form
       method="post"
       action="/customers/delete-all"
