@@ -12,7 +12,7 @@
     <select name="templateId" required>
       <option value="">Select template</option>
       <% templates.forEach((template) => { %>
-      <option value="<%= template.id %>"><%= template.name %></option>
+      <option value="<%= template.id %>"><%= template.name %><%= template.image_path ? " (image)" : "" %></option>
       <% }) %>
     </select>
     <input type="text" name="tagFilter" placeholder="Optional tag filter" />

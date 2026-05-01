@@ -4,3 +4,4 @@ app.db
 .wwebjs_auth/
 .wwebjs_cache/
 *.log
+uploads/

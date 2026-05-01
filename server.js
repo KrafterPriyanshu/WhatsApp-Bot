@@ -1,4 +1,6 @@
 require("dotenv").config();
+const fs = require("fs");
+const path = require("path");
 const http = require("http");
 const express = require("express");
 const bodyParser = require("body-parser");
@@ -9,16 +11,38 @@ const { parse } = require("csv-parse/sync");
 const { Server } = require("socket.io");
 const QRCode = require("qrcode");
 const qrcodeTerminal = require("qrcode-terminal");
-const { Client, LocalAuth } = require("whatsapp-web.js");
+const { Client, LocalAuth, MessageMedia } = require("whatsapp-web.js");
 const db = require("./db");
 
 const app = express();
 const httpServer = http.createServer(app);
 const io = new Server(httpServer);
 const PORT = process.env.PORT || 3000;
+const TEMPLATE_IMAGE_DIR = path.join(__dirname, "uploads", "template-images");
+const ALLOWED_TEMPLATE_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+
+fs.mkdirSync(TEMPLATE_IMAGE_DIR, { recursive: true });
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 50 * 1024 * 1024 },
+});
+
+const templateImageUpload = multer({
+  storage: multer.diskStorage({
+    destination: (_, __, cb) => cb(null, TEMPLATE_IMAGE_DIR),
+    filename: (_, file, cb) => {
+      const ext = path.extname(file.originalname || "").toLowerCase();
+      const safe =
+        ext === ".jpeg" ? ".jpg" : [".jpg", ".png", ".webp", ".gif"].includes(ext) ? ext : ".jpg";
+      cb(null, `${Date.now()}-${Math.random().toString(36).slice(2, 12)}${safe}`);
+    },
+  }),
+  limits: { fileSize: 12 * 1024 * 1024 },
+  fileFilter: (_, file, cb) => {
+    if (ALLOWED_TEMPLATE_IMAGE_TYPES.has(file.mimetype)) return cb(null, true);
+    cb(new Error("Only JPEG, PNG, WebP, or GIF images are allowed."));
+  },
 });
 const DEFAULT_SUPPORT_REPLY =
   process.env.SUPPORT_AUTO_REPLY ||
@@ -83,11 +107,34 @@ function getQuery(sql, params = []) {
   });
 }
 
-async function sendWhatsAppText(to, bodyText, preferredChatId = "") {
-  if (!waState.isReady) {
-    throw new Error("WhatsApp Web is not ready. Scan QR first.");
-  }
+function storedRelPathFromTemplateFilename(filename) {
+  if (!filename) return "";
+  return path.join("uploads", "template-images", filename).split(path.sep).join("/");
+}
 
+function fullPathForStoredTemplateImage(rel) {
+  if (!rel || typeof rel !== "string" || rel.includes("..")) return null;
+  const normalizedRel = String(rel).replace(/\\/g, path.sep).trim();
+  const full = path.resolve(__dirname, normalizedRel);
+  const allowedRoot = path.resolve(TEMPLATE_IMAGE_DIR);
+  if (!full.startsWith(path.join(allowedRoot, path.sep)) && full !== allowedRoot) {
+    return null;
+  }
+  return full;
+}
+
+function unlinkTemplateImageByRelative(rel) {
+  const abs = fullPathForStoredTemplateImage(rel);
+  if (abs && fs.existsSync(abs)) {
+    try {
+      fs.unlinkSync(abs);
+    } catch (_) {
+      /* ignore */
+    }
+  }
+}
+
+async function resolveWhatsAppChatId(to, preferredChatId = "") {
   const raw = String(to || "").trim();
   const preferred = String(preferredChatId || "").trim();
   let chatId = preferred || raw;
@@ -100,9 +147,34 @@ async function sendWhatsAppText(to, bodyText, preferredChatId = "") {
       } else {
         chatId = `${raw.replace(/\D/g, "")}@c.us`;
       }
-    } catch (error) {
+    } catch (_) {
       chatId = `${raw.replace(/\D/g, "")}@c.us`;
     }
+  }
+  return chatId;
+}
+
+async function sendWhatsAppText(to, bodyText, preferredChatId = "") {
+  if (!waState.isReady) {
+    throw new Error("WhatsApp Web is not ready. Scan QR first.");
+  }
+  const chatId = await resolveWhatsAppChatId(to, preferredChatId);
+  const sentMessage = await waClient.sendMessage(chatId, bodyText);
+  return { id: sentMessage.id?._serialized || null };
+}
+
+async function sendWhatsAppCampaignMessage(customer, bodyText, template) {
+  if (!waState.isReady) {
+    throw new Error("WhatsApp Web is not ready. Scan QR first.");
+  }
+  const chatId = await resolveWhatsAppChatId(customer.phone, customer.wa_chat_id);
+  const rel = template?.image_path ? String(template.image_path).trim() : "";
+  const abs = rel ? fullPathForStoredTemplateImage(rel) : null;
+
+  if (abs && fs.existsSync(abs)) {
+    const media = MessageMedia.fromFilePath(abs);
+    const sent = await waClient.sendMessage(chatId, media, { caption: bodyText });
+    return { id: sent.id?._serialized || null };
   }
 
   const sentMessage = await waClient.sendMessage(chatId, bodyText);
@@ -286,6 +358,8 @@ app.use((req, res, next) => {
   return requireAuth(req, res, next);
 });
 
+app.use("/upload-template-images", express.static(TEMPLATE_IMAGE_DIR));
+
 async function getCounts() {
   const [customerCount, templateCount, campaignCount, messageCount, optedOutCount] = await Promise.all([
     getQuery("SELECT COUNT(*) AS count FROM customers"),
@@ -331,7 +405,7 @@ async function processCampaign(campaignId) {
   for (const customer of customers) {
     const text = renderTemplate(template.content, customer);
     try {
-      const waData = await sendWhatsAppText(customer.phone, text, customer.wa_chat_id);
+      const waData = await sendWhatsAppCampaignMessage(customer, text, template);
       const waMessageId = waData?.id || null;
       await runQuery(
         "INSERT INTO messages (customer_id, direction, body, wa_message_id, status) VALUES (?, ?, ?, ?, ?)",
@@ -730,35 +804,78 @@ app.post("/customers/delete-all", async (req, res) => {
   }
 });
 
-app.post("/templates", async (req, res) => {
+app.post("/templates", (req, res, next) => {
+  templateImageUpload.single("templateImage")(req, res, (err) => {
+    if (!err) return next();
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return res.status(400).send("Template image exceeds 12 MB.");
+    }
+    return res.status(400).send(err.message || "Upload failed.");
+  });
+}, async (req, res) => {
   const { name, content } = req.body;
-  if (!name || !content) return res.status(400).send("name and content are required");
+  if (!name || !content) {
+    if (req.file?.filename) unlinkTemplateImageByRelative(storedRelPathFromTemplateFilename(req.file.filename));
+    return res.status(400).send("name and content are required");
+  }
+
+  const imagePath = req.file ? storedRelPathFromTemplateFilename(req.file.filename) : "";
 
   try {
-    await runQuery("INSERT INTO templates (name, content) VALUES (?, ?)", [
+    await runQuery("INSERT INTO templates (name, content, image_path) VALUES (?, ?, ?)", [
       name.trim(),
       content.trim(),
+      imagePath,
     ]);
     redirectBack(req, res);
   } catch (error) {
+    if (req.file?.path) unlinkTemplateImageByRelative(storedRelPathFromTemplateFilename(req.file.filename));
     res.status(400).send(`Could not add template: ${error.message}`);
   }
 });
 
-app.post("/templates/:id/update", async (req, res) => {
+app.post("/templates/:id/update", (req, res, next) => {
+  templateImageUpload.single("templateImage")(req, res, (err) => {
+    if (!err) return next();
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return res.status(400).send("Template image exceeds 12 MB.");
+    }
+    return res.status(400).send(err.message || "Upload failed.");
+  });
+}, async (req, res) => {
   const templateId = Number(req.params.id);
   const { name, content } = req.body;
   if (!Number.isInteger(templateId)) return res.status(400).send("Invalid template id");
   if (!name || !content) return res.status(400).send("name and content are required");
 
   try {
-    await runQuery("UPDATE templates SET name = ?, content = ? WHERE id = ?", [
+    const existing = await getQuery("SELECT * FROM templates WHERE id = ?", [templateId]);
+    if (!existing) {
+      if (req.file?.filename) unlinkTemplateImageByRelative(storedRelPathFromTemplateFilename(req.file.filename));
+      return res.status(404).send("Template not found");
+    }
+
+    let image_path = existing.image_path || "";
+
+    if (req.body.removeImage === "on") {
+      unlinkTemplateImageByRelative(image_path);
+      image_path = "";
+    }
+
+    if (req.file?.filename) {
+      unlinkTemplateImageByRelative(existing.image_path);
+      image_path = storedRelPathFromTemplateFilename(req.file.filename);
+    }
+
+    await runQuery("UPDATE templates SET name = ?, content = ?, image_path = ? WHERE id = ?", [
       name.trim(),
       content.trim(),
+      image_path || "",
       templateId,
     ]);
     redirectBack(req, res);
   } catch (error) {
+    if (req.file?.filename) unlinkTemplateImageByRelative(storedRelPathFromTemplateFilename(req.file.filename));
     res.status(400).send(`Could not update template: ${error.message}`);
   }
 });
@@ -768,6 +885,8 @@ app.post("/templates/:id/delete", async (req, res) => {
   if (!Number.isInteger(templateId)) return res.status(400).send("Invalid template id");
 
   try {
+    const existing = await getQuery("SELECT image_path FROM templates WHERE id = ?", [templateId]);
+    if (existing?.image_path) unlinkTemplateImageByRelative(existing.image_path);
     await runQuery("DELETE FROM templates WHERE id = ?", [templateId]);
     redirectBack(req, res);
   } catch (error) {
@@ -777,6 +896,10 @@ app.post("/templates/:id/delete", async (req, res) => {
 
 app.post("/templates/delete-all", async (req, res) => {
   try {
+    const rows = await allQuery("SELECT image_path FROM templates WHERE TRIM(IFNULL(image_path,'')) != ''");
+    for (const row of rows) {
+      unlinkTemplateImageByRelative(row.image_path);
+    }
     await runQuery("DELETE FROM templates");
     redirectBack(req, res);
   } catch (error) {

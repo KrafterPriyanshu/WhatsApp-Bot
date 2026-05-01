@@ -1,7 +1,7 @@
 <%- include("partials/app-start", {
   pageTitle: "Templates",
   pageHeading: "Templates",
-  pageSubtitle: "Create and edit reusable message templates.",
+  pageSubtitle: "Create and edit reusable message templates. Attach an optional image — it is sent with your caption (placeholders {{name}}, {{phone}} work in campaigns).",
   activePage,
   counts
 }) %>
@@ -9,9 +9,13 @@
 <section class="two-col">
   <article class="card">
     <h2>Create Template</h2>
-    <form method="post" action="/templates" class="grid">
+    <form method="post" enctype="multipart/form-data" action="/templates" class="grid">
       <input type="text" name="name" placeholder="Template name" required />
       <textarea name="content" rows="4" placeholder="Hello {{name}}, your offer is ready." required></textarea>
+      <label class="file-field">
+        <span>Attached image <span class="muted">(optional, JPEG / PNG / WebP / GIF, max 12 MB)</span></span>
+        <input type="file" name="templateImage" accept="image/jpeg,image/png,image/webp,image/gif" />
+      </label>
       <button type="submit">Save Template</button>
     </form>
   </article>
@@ -34,20 +38,44 @@
         <tr>
           <th>Name</th>
           <th>Message Content</th>
+          <th>Image</th>
           <th>Actions</th>
         </tr>
       </thead>
       <tbody>
-        <% templates.forEach((t) => { %>
+        <% templates.forEach((t) => {
+          const parts = String(t.image_path || "").split(/[/\\]/);
+          const imgBasename = parts.filter(Boolean).pop() || "";
+        %>
         <tr>
           <td>
-            <form method="post" action="/templates/<%= t.id %>/update" class="inline-edit">
-              <input type="text" name="name" value="<%= t.name %>" required />
+            <input type="text" name="name" form="tpl-update-<%= t.id %>" value="<%= t.name %>" required />
           </td>
-          <td><textarea name="content" rows="2" required><%= t.content %></textarea></td>
+          <td>
+            <textarea name="content" form="tpl-update-<%= t.id %>" rows="3" required><%= t.content %></textarea>
+          </td>
+          <td class="template-image-cell">
+            <% if (imgBasename) { %>
+              <img class="template-thumb" src="/upload-template-images/<%= encodeURIComponent(imgBasename) %>" alt="" />
+            <% } else { %>
+              <span class="muted">None</span>
+            <% } %>
+            <label class="file-field compact">
+              <span class="muted">Replace</span>
+              <input type="file" form="tpl-update-<%= t.id %>" name="templateImage" accept="image/jpeg,image/png,image/webp,image/gif" />
+            </label>
+            <% if (t.image_path) { %>
+              <label class="checkbox-inline"><input type="checkbox" form="tpl-update-<%= t.id %>" name="removeImage" /> Remove</label>
+            <% } %>
+          </td>
           <td class="actions-cell">
-              <button type="submit" class="secondary">Update</button>
-            </form>
+            <form
+              id="tpl-update-<%= t.id %>"
+              method="post"
+              enctype="multipart/form-data"
+              action="/templates/<%= t.id %>/update"
+            ></form>
+            <button type="submit" form="tpl-update-<%= t.id %>" class="secondary">Update</button>
             <form
               method="post"
               action="/templates/<%= t.id %>/delete"

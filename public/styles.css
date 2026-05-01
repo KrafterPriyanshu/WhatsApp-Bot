@@ -584,6 +584,40 @@ tbody tr:hover {
   }
 }
 
+.file-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+  color: #cbd5e1;
+}
+
+.file-field.compact {
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.template-image-cell .file-field.compact .muted {
+  display: block;
+}
+
+.template-thumb {
+  display: block;
+  max-height: 76px;
+  max-width: 120px;
+  border-radius: 8px;
+  object-fit: cover;
+  margin-bottom: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.checkbox-inline {
+  display: block;
+  margin-top: 8px;
+  font-size: 13px;
+  color: #94a3b8;
+}
+
 @media (max-width: 640px) {
   .sidebar {
     width: min(88vw, 320px);

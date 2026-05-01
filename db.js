@@ -41,6 +41,7 @@ db.serialize(() => {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL UNIQUE,
       content TEXT NOT NULL,
+      image_path TEXT DEFAULT '',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
@@ -182,6 +183,7 @@ We’d love to have you back. Reply if you’d like updates, an offer recap, or 
   db.run("ALTER TABLE customers ADD COLUMN wa_chat_id TEXT DEFAULT ''", () => {});
   db.run("ALTER TABLE campaigns ADD COLUMN scheduled_at DATETIME", () => {});
   db.run("ALTER TABLE campaigns ADD COLUMN tag_filter TEXT DEFAULT ''", () => {});
+  db.run("ALTER TABLE templates ADD COLUMN image_path TEXT DEFAULT ''", () => {});
 });
 
 module.exports = db;
