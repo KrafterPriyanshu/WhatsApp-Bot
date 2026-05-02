@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
+    "install-chrome": "node scripts/install-puppeteer-chrome.js",
     "postinstall": "node scripts/postinstall.js"
   },
   "keywords": [],

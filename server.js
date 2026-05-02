@@ -22,7 +22,7 @@ const db = require("./db");
 const app = express();
 const httpServer = http.createServer(app);
 const io = new Server(httpServer);
-const PORT = process.env.PORT || 3000;
+const preferredPort = Number.parseInt(String(process.env.PORT || 3000), 10);
 const TEMPLATE_IMAGE_DIR = path.join(__dirname, "uploads", "template-images");
 const ALLOWED_TEMPLATE_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
@@ -1266,12 +1266,39 @@ waClient.on("message", async (message) => {
   }
 });
 
-httpServer.listen(PORT, () => {
-  // eslint-disable-next-line no-console
-  console.log(`Server running on http://localhost:${PORT}`);
-});
+function listenHttp(port, attemptsLeft) {
+  httpServer.once("error", (err) => {
+    if (err.code === "EADDRINUSE" && attemptsLeft > 0) {
+      const next = port + 1;
+      // eslint-disable-next-line no-console
+      console.warn(`Port ${port} is in use, trying ${next}...`);
+      listenHttp(next, attemptsLeft - 1);
+      return;
+    }
+    // eslint-disable-next-line no-console
+    console.error(err);
+    process.exit(1);
+  });
+  httpServer.listen(port, () => {
+    httpServer.removeAllListeners("error");
+    process.env.PORT = String(port);
+    // eslint-disable-next-line no-console
+    console.log(`Server running on http://localhost:${port}`);
+    waClient.initialize().catch((err) => {
+      waState.lastError = err.message;
+      // eslint-disable-next-line no-console
+      console.error("WhatsApp client failed to start:", err.message);
+      if (String(err.message || "").includes("already running")) {
+        // eslint-disable-next-line no-console
+        console.error(
+          "Stop the other server.js (same folder) or close its terminal so only one bot uses this session."
+        );
+      }
+    });
+  });
+}
 
-waClient.initialize();
+listenHttp(preferredPort, 40);
 processDueCampaigns().catch((error) => {
   waState.lastError = error.message;
 });
