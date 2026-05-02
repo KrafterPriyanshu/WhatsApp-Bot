@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "postinstall": "npm rebuild sqlite3 --build-from-source"
+    "postinstall": "node scripts/postinstall.js"
   },
   "keywords": [],
   "author": "",

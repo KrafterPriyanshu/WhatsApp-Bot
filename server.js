@@ -1,6 +1,11 @@
 require("dotenv").config();
 const fs = require("fs");
 const path = require("path");
+
+// Puppeteer (whatsapp-web.js): use project-local Chrome from postinstall (required on Render).
+if (!process.env.PUPPETEER_CACHE_DIR) {
+  process.env.PUPPETEER_CACHE_DIR = path.join(__dirname, ".cache", "puppeteer");
+}
 const http = require("http");
 const express = require("express");
 const bodyParser = require("body-parser");
@@ -76,7 +81,12 @@ const waClient = new Client({
   authStrategy: new LocalAuth({ clientId: "marketing-bot" }),
   puppeteer: {
     headless: true,
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+    ],
   },
 });
 
