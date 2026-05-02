@@ -35,9 +35,13 @@ An **unofficial WhatsApp Web** assistant built with **[whatsapp-web.js](https://
 
 ## Requirements
 
-- Node.js **18+** recommended (matching your lockfile toolchain)
+- Node.js **20.x or 22.x LTS** recommended. Very new releases (for example **Node 25**) may lack prebuilt `sqlite3` binaries and then require Python + native build tools.
 - A machine capable of running **headless Chromium** (Puppeteer)
 - Enough RAM for Puppeteer during WhatsApp sessions
+
+**Windows note:** If `npm install` fails while compiling `sqlite3`, install [Node LTS](https://nodejs.org/) instead of Current, or install [Python](https://www.python.org/downloads/) and [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) — only needed when the package must compile from source.
+
+**Deploy (Render):** Render sets `RENDER=true`; `postinstall` rebuilds `sqlite3` from source there. Elsewhere you can set `SQLITE_BUILD_FROM_SOURCE=true` if you need the same behavior.
 
 ---
 
